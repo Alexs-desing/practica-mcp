@@ -111,3 +111,97 @@ group by estado;
 > El esquema `alumnos` **no se expone** en la API REST por defecto. Para usar
 > `supabase-js` hay que añadirlo en **Project Settings → API → Exposed schemas**
 > y definir políticas RLS.
+
+---
+
+# Base de datos `lavado_autos` — negocio de lavado de autos
+
+Segundo esquema del mismo proyecto Supabase. Tiene **12 tablas**, **13 claves
+foráneas** y **144 filas** de ejemplo, todas relacionadas entre sí.
+
+## Archivos
+
+| Archivo | Contenido |
+|---|---|
+| `lavado_autos_schema.sql` | `create schema`, 12 tablas, FK, checks, índices y comentarios |
+| `lavado_autos_seed.sql` | Datos de ejemplo (144 filas) + sincronización de secuencias |
+
+## Modelo de datos
+
+```text
+clientes ──< vehiculos ──< citas
+    │            │
+    │            └──< ordenes >── empleados
+    │                    │
+    │                    ├──< orden_detalle >── servicios
+    │                    ├──< pagos
+    │                    ├──< consumo_insumos >── insumos
+    │                    └──< orden_promociones >── promociones
+    └────────────────────┘
+```
+
+Reglas destacadas:
+
+- `ordenes.total <= subtotal` y `total = subtotal - descuento`.
+- `pagos` con `estado = 'aprobado'` exige `fecha_pago`.
+- `orden_detalle` no repite el mismo servicio en una orden.
+- `consumo_insumos` no repite el mismo insumo en una orden.
+- Borrados: `cascade` en dependencias de la orden, `restrict` en catálogos.
+
+## Filas por tabla
+
+| Tabla | Filas |
+|---|---:|
+| `clientes` | 12 |
+| `vehiculos` | 12 |
+| `servicios` | 10 |
+| `empleados` | 10 |
+| `insumos` | 10 |
+| `promociones` | 10 |
+| `citas` | 12 |
+| `ordenes` | 12 |
+| `orden_detalle` | 20 |
+| `pagos` | 12 |
+| `consumo_insumos` | 14 |
+| `orden_promociones` | 10 |
+
+## Consultas de verificación
+
+```sql
+-- Órdenes con cliente, vehículo, subtotal y total
+select o.id,
+       c.nombre || ' ' || c.apellido as cliente,
+       v.placa, v.marca || ' ' || v.modelo as vehiculo,
+       o.estado, o.subtotal, o.descuento, o.total
+from lavado_autos.ordenes o
+join lavado_autos.clientes c on c.id = o.cliente_id
+join lavado_autos.vehiculos v on v.id = o.vehiculo_id
+order by o.id;
+
+-- Ingresos aprobados por método de pago
+select metodo, count(*) as pagos, sum(monto)::numeric(12,2) as total
+from lavado_autos.pagos
+where estado = 'aprobado'
+group by metodo
+order by total desc;
+
+-- Servicios más vendidos
+select s.nombre, sum(d.cantidad) as veces, sum(d.subtotal) as importe
+from lavado_autos.orden_detalle d
+join lavado_autos.servicios s on s.id = d.servicio_id
+group by s.nombre
+order by importe desc;
+```
+
+## Dónde verlo
+
+| Vía | Ruta |
+|---|---|
+| Table Editor | Dashboard → **Table Editor** → selector de esquema → `lavado_autos` |
+| Database → Tables | Dashboard → **Database** → **Tables** → selector `lavado_autos` |
+| Diagrama | Dashboard → **Database** → **Schema Visualizer** |
+| SQL Editor | `select * from lavado_autos.ordenes;` |
+
+> Las 12 tablas tienen **RLS desactivado**. No es urgente mientras el esquema no
+> se exponga en la API, pero si lo agregas en **Project Settings → API →
+> Exposed schemas**, activa RLS y crea políticas antes de usar la `anon key`.
