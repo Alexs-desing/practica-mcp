@@ -35,6 +35,41 @@ sudo mysql < mysql/lavado_autos_mysql.sql
 mysql -u root -p < mysql/lavado_autos_mysql.sql
 ```
 
+## Usuario para MySQL Workbench (Ubuntu)
+
+En Ubuntu, el usuario `root` de MySQL suele usar autenticación por socket
+(`auth_socket`), así que Workbench —que conecta por TCP— no puede entrar como
+`root` aunque escribas bien la contraseña. La forma más rápida es crear un
+usuario administrador solo para este esquema:
+
+```bash
+cd /home/ale/Escritorio/Practica1_Oc
+bash scripts/cargar_lavado_autos_mysql.sh
+```
+
+El script hace todo esto:
+
+- Carga `lavado_autos_mysql.sql` con `sudo mysql` (te pedirá tu contraseña de sudo).
+- Crea el usuario **`lavado_admin`@`localhost`**.
+- Genera una contraseña aleatoria y la guarda en
+  `~/.secrets/mysql_lavado_admin_password` con permisos `600`.
+- Le da `ALL PRIVILEGES` solo sobre `lavado_autos.*`.
+- Da `SELECT` a `mcp_user` para que OpenCode pueda verificar los datos.
+- Prueba la conexión y muestra el conteo de las 12 tablas.
+
+Datos para la conexión de Workbench:
+
+```text
+Host:            127.0.0.1
+Port:            3306
+User:            lavado_admin
+Default Schema:  lavado_autos
+Password:        cat ~/.secrets/mysql_lavado_admin_password
+```
+
+Si ya tienes un usuario de MySQL con contraseña y permisos suficientes, puedes
+usarlo directamente y ejecutar solo el archivo SQL.
+
 ## Comprobar que quedó bien
 
 ```sql
