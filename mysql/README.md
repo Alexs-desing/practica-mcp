@@ -35,6 +35,46 @@ sudo mysql < mysql/lavado_autos_mysql.sql
 mysql -u root -p < mysql/lavado_autos_mysql.sql
 ```
 
+## Instancia propia sin sudo (puerto 3307)
+
+Si no puedes usar `sudo` o `root` de MySQL usa `auth_socket`, este script crea
+una instancia MySQL independiente solo para ti, sin tocar el MySQL del sistema:
+
+```bash
+cd /home/ale/Escritorio/Practica1_Oc
+bash scripts/crear_instancia_mysql_lavado.sh
+```
+
+Qué hace:
+
+- Escucha solo en `127.0.0.1:3307` (no se expone a la red).
+- Guarda los datos en `/var/tmp/mysql-lavado`; no se usa el home porque el
+  perfil AppArmor de Ubuntu solo deja escribir a `mysqld` en `/var/lib/mysql`,
+  `/tmp` y `/var/tmp`.
+- Crea `lavado_autos` con las 12 tablas, 13 claves foráneas y 144 filas.
+- Crea el usuario `lavado_admin` con contraseña `123456` y permisos solo sobre
+  `lavado_autos.*`.
+- Lo deja como servicio de usuario, habilitado al iniciar sesión:
+
+```bash
+systemctl --user status mysql-lavado
+systemctl --user restart mysql-lavado
+systemctl --user stop mysql-lavado
+```
+
+Conexión para MySQL Workbench:
+
+| Campo | Valor |
+|---|---|
+| Hostname | `127.0.0.1` |
+| Port | `3307` |
+| Username | `lavado_admin` |
+| Password | `123456` |
+| Default Schema | `lavado_autos` |
+
+El script es idempotente: se puede volver a ejecutar sin duplicar datos. Si se
+borra `/var/tmp/mysql-lavado`, ejecútalo de nuevo para recrear la base.
+
 ## Usuario para MySQL Workbench (Ubuntu)
 
 En Ubuntu, el usuario `root` de MySQL suele usar autenticación por socket
